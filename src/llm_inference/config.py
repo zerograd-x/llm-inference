@@ -32,8 +32,8 @@ class VLLMConfig:
     gpu_memory_utilization: float = 0.9
     max_model_len: int | None = None
     enable_prefix_caching: bool = False
-    execution_mode: Literal["offline", "async"] = "offline"
     extra_kwargs: Mapping[str, Any] = field(default_factory=dict)
+    execution_mode: Literal["offline", "async"] = "offline"
 
     def __post_init__(self) -> None:
         if self.tensor_parallel_size <= 0:
@@ -53,7 +53,6 @@ class VLLMConfig:
             "max_model_len",
             "dtype",
             "trust_remote_code",
-            "enable_log_requests",
         }
         conflicts = sorted(reserved.intersection(extra))
         if conflicts:
