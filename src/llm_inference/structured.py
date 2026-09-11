@@ -36,6 +36,16 @@ class StructuredOutputConfig:
                 raise ValueError("choices must contain non-empty strings")
             object.__setattr__(self, "choices", choices)
 
+    @property
+    def kind(self) -> str:
+        if self.json_schema is not None:
+            return "json_schema"
+        if self.regex is not None:
+            return "regex"
+        if self.choices is not None:
+            return "choices"
+        return "grammar"
+
     def to_backend_kwargs(self) -> dict[str, Any]:
         if self.json_schema is not None:
             return {"json": dict(self.json_schema)}
