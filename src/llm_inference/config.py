@@ -41,7 +41,23 @@ class VLLMConfig:
             raise ValueError("gpu_memory_utilization must be in (0, 1]")
         if self.max_model_len is not None and self.max_model_len <= 0:
             raise ValueError("max_model_len must be > 0 when set")
-        object.__setattr__(self, "extra_kwargs", dict(self.extra_kwargs))
+        extra = dict(self.extra_kwargs)
+        reserved = {
+            "model",
+            "tensor_parallel_size",
+            "gpu_memory_utilization",
+            "enable_prefix_caching",
+            "max_model_len",
+            "dtype",
+            "trust_remote_code",
+        }
+        conflicts = sorted(reserved.intersection(extra))
+        if conflicts:
+            raise ValueError(
+                "VLLMConfig.extra_kwargs must not override explicit settings: "
+                f"{conflicts}"
+            )
+        object.__setattr__(self, "extra_kwargs", extra)
 
 
 @dataclass(frozen=True)
@@ -60,7 +76,22 @@ class SGLangConfig:
             raise ValueError("mem_fraction_static must be in (0, 1] when set")
         if self.context_length is not None and self.context_length <= 0:
             raise ValueError("context_length must be > 0 when set")
-        object.__setattr__(self, "extra_kwargs", dict(self.extra_kwargs))
+        extra = dict(self.extra_kwargs)
+        reserved = {
+            "model_path",
+            "tp_size",
+            "dtype",
+            "trust_remote_code",
+            "context_length",
+            "mem_fraction_static",
+        }
+        conflicts = sorted(reserved.intersection(extra))
+        if conflicts:
+            raise ValueError(
+                "SGLangConfig.extra_kwargs must not override explicit settings: "
+                f"{conflicts}"
+            )
+        object.__setattr__(self, "extra_kwargs", extra)
 
 
 BackendConfig = TransformersConfig | VLLMConfig | SGLangConfig
