@@ -31,7 +31,7 @@ class BackendRegistration:
 
 
 class BackendRegistry:
-    """Explicit backend registry with no import-time registration side effects."""
+    """Central backend registry without decorator-based discovery side effects."""
 
     def __init__(self) -> None:
         self._by_name: dict[str, BackendRegistration] = {}
