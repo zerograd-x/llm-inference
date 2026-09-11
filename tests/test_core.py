@@ -1,4 +1,6 @@
 import asyncio
+import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -17,6 +19,7 @@ from llm_inference import (
     TransformersConfig,
     VLLMConfig,
     build_inference_plan,
+    create_backend,
     create_run_identity,
     format_inference_plan,
     validate_request_capabilities,
@@ -272,3 +275,86 @@ def test_sglang_capabilities_reject_unsupported_structured_output_kind():
         structured_output=StructuredOutputConfig(regex=r"\\d+"),
     )
     validate_request_capabilities(supported, capabilities)
+
+
+
+def test_sglang_backend_uses_offline_engine_contract(monkeypatch):
+    class FakeEngine:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.closed = False
+
+        def generate(self, *, prompt, sampling_params):
+            assert prompt == ["hello", "world"]
+            assert sampling_params[0]["max_new_tokens"] == 8
+            return [
+                {
+                    "text": f"out:{value}",
+                    "output_ids": [10 + index],
+                    "meta_info": {
+                        "prompt_tokens": 2,
+                        "finish_reason": {"type": "stop"},
+                    },
+                }
+                for index, value in enumerate(prompt)
+            ]
+
+        async def async_generate(self, **kwargs):
+            return {
+                "text": f"async:{kwargs['prompt']}",
+                "output_ids": [99],
+                "meta_info": {
+                    "prompt_tokens": 3,
+                    "finish_reason": {"type": "length"},
+                },
+            }
+
+        def shutdown(self):
+            self.closed = True
+
+    monkeypatch.setitem(
+        sys.modules,
+        "sglang",
+        SimpleNamespace(Engine=FakeEngine),
+    )
+
+    config = InferenceConfig(
+        model=ModelConfig("example/model", dtype="bfloat16"),
+        backend=SGLangConfig(
+            tensor_parallel_size=2,
+            mem_fraction_static=0.8,
+        ),
+        generation=GenerationConfig(max_new_tokens=8),
+    )
+    backend = create_backend(config)
+
+    assert backend.name == "sglang"
+    assert backend.engine.kwargs["model_path"] == "example/model"
+    assert backend.engine.kwargs["tp_size"] == 2
+    assert backend.engine.kwargs["mem_fraction_static"] == 0.8
+
+    requests = [
+        GenerationRequest(
+            prompt="hello",
+            generation=config.generation,
+            request_id="a",
+        ),
+        GenerationRequest(
+            prompt="world",
+            generation=config.generation,
+            request_id="b",
+        ),
+    ]
+    results = backend.generate_batch(requests)
+    assert [result.candidates[0].text for result in results] == [
+        "out:hello",
+        "out:world",
+    ]
+    assert results[0].candidates[0].finish_reason == "stop"
+
+    async_result = asyncio.run(backend.generate_async(requests[0]))
+    assert async_result.candidates[0].text == "async:hello"
+    assert async_result.candidates[0].finish_reason == "length"
+
+    backend.close()
+    assert backend.engine.closed is True
