@@ -1,0 +1,49 @@
+name: Qwen3.5 GPU Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case: transformers
+            extra: transformers
+          - case: vllm_offline
+            extra: vllm
+          - case: vllm_async
+            extra: vllm
+          - case: sglang_sync
+            extra: sglang
+          - case: sglang_async
+            extra: sglang
+    runs-on: [self-hosted, linux, gpu]
+    timeout-minutes: 45
+    env:
+      CUDA_VISIBLE_DEVICES: "0"
+      TOKENIZERS_PARALLELISM: "false"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip build
+      - name: Build wheel
+        run: python -m build --wheel
+      - name: Install isolated wheel and backend
+        run: |
+          python -m venv ".venv-${{ matrix.case }}"
+          source ".venv-${{ matrix.case }}/bin/activate"
+          pip install --upgrade pip
+          WHEEL=$(ls dist/llm_inference-*.whl)
+          pip install "${WHEEL}[${{ matrix.extra }}]"
+      - run: nvidia-smi
+      - name: Run Qwen3.5-4B smoke
+        run: |
+          source ".venv-${{ matrix.case }}/bin/activate"
+          python tests/gpu/qwen35_smoke.py --case "${{ matrix.case }}"
