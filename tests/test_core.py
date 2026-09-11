@@ -204,7 +204,6 @@ def test_run_identity_is_safe_and_explicit_when_provided():
     assert identity.run_id == "experiment_01_run"
 
 
-
 def test_default_backend_registry_is_single_source_of_backend_metadata():
     assert DEFAULT_BACKEND_REGISTRY.names == (
         "sglang",
@@ -275,7 +274,6 @@ def test_sglang_capabilities_reject_unsupported_structured_output_kind():
         structured_output=StructuredOutputConfig(regex=r"\\d+"),
     )
     validate_request_capabilities(supported, capabilities)
-
 
 
 def test_sglang_backend_uses_offline_engine_contract(monkeypatch):
@@ -358,3 +356,18 @@ def test_sglang_backend_uses_offline_engine_contract(monkeypatch):
 
     backend.close()
     assert backend.engine.closed is True
+
+
+
+def test_backend_extra_kwargs_cannot_override_explicit_settings():
+    with pytest.raises(ValueError, match="must not override explicit settings"):
+        VLLMConfig(
+            tensor_parallel_size=2,
+            extra_kwargs={"tensor_parallel_size": 4},
+        )
+
+    with pytest.raises(ValueError, match="must not override explicit settings"):
+        SGLangConfig(
+            tensor_parallel_size=2,
+            extra_kwargs={"tp_size": 4},
+        )
