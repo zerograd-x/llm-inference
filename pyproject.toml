@@ -19,6 +19,9 @@ transformers = [
 vllm = [
   "vllm>=0.8",
 ]
+sglang = [
+  "sglang>=0.5.18,<0.6",
+]
 test = [
   "pytest>=8,<9",
 ]
