@@ -358,7 +358,6 @@ def test_sglang_backend_uses_offline_engine_contract(monkeypatch):
     assert backend.engine.closed is True
 
 
-
 def test_backend_extra_kwargs_cannot_override_explicit_settings():
     with pytest.raises(ValueError, match="must not override explicit settings"):
         VLLMConfig(
@@ -371,7 +370,6 @@ def test_backend_extra_kwargs_cannot_override_explicit_settings():
             tensor_parallel_size=2,
             extra_kwargs={"tp_size": 4},
         )
-
 
 
 def _install_fake_vllm(monkeypatch):
@@ -498,6 +496,14 @@ def test_vllm_execution_mode_changes_effective_capabilities():
     assert offline_plan.capabilities.async_generation is False
     assert async_plan.capabilities.batch_generation is False
     assert async_plan.capabilities.async_generation is True
+    assert (
+        DEFAULT_BACKEND_REGISTRY.capabilities_for(offline.backend)
+        == offline_plan.capabilities
+    )
+    assert (
+        DEFAULT_BACKEND_REGISTRY.capabilities_for(async_config.backend)
+        == async_plan.capabilities
+    )
     assert offline_plan.fingerprint != async_plan.fingerprint
 
 
