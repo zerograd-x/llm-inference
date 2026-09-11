@@ -5,7 +5,12 @@ import hashlib
 import json
 from typing import Any
 
-from .capabilities import BackendCapabilities, validate_request_capabilities
+from .capabilities import (
+    BackendCapabilities,
+    TRANSFORMERS_CAPABILITIES,
+    VLLM_CAPABILITIES,
+    validate_request_capabilities,
+)
 from .config import InferenceConfig, TransformersConfig, VLLMConfig
 from .request import GenerationRequest
 
@@ -22,23 +27,9 @@ def _canonical_sha256(payload: Any) -> str:
 
 def backend_capabilities(config: InferenceConfig) -> BackendCapabilities:
     if isinstance(config.backend, TransformersConfig):
-        return BackendCapabilities(
-            batch_generation=True,
-            async_generation=False,
-            sampling=True,
-            multi_sample=False,
-            logprobs=False,
-            structured_output=False,
-        )
+        return TRANSFORMERS_CAPABILITIES
     if isinstance(config.backend, VLLMConfig):
-        return BackendCapabilities(
-            batch_generation=True,
-            async_generation=False,
-            sampling=True,
-            multi_sample=True,
-            logprobs=True,
-            structured_output=True,
-        )
+        return VLLM_CAPABILITIES
     raise TypeError(f"Unsupported backend config: {type(config.backend).__name__}")
 
 
