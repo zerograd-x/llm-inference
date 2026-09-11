@@ -4,7 +4,7 @@ from typing import Any, Sequence
 from uuid import uuid4
 
 from ..backend import InferenceBackend
-from ..capabilities import vllm_capabilities
+from ..capabilities import VLLM_CAPABILITIES, vllm_capabilities
 from ..config import InferenceConfig, VLLMConfig
 from ..request import GenerationRequest
 from ..result import GenerationCandidate, GenerationResult
@@ -12,6 +12,7 @@ from ..result import GenerationCandidate, GenerationResult
 
 class VLLMBackend(InferenceBackend):
     name = "vllm"
+    capabilities = VLLM_CAPABILITIES
 
     def __init__(self, config: InferenceConfig) -> None:
         if not isinstance(config.backend, VLLMConfig):
