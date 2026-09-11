@@ -16,12 +16,17 @@ from .request import GenerationRequest
 
 
 def _canonical_sha256(payload: Any) -> str:
-    encoded = json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        default=str,
-    ).encode("utf-8")
+    try:
+        encoded = json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            "Effective inference configuration must be JSON-serializable "
+            "to produce a stable plan fingerprint"
+        ) from exc
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -44,8 +49,7 @@ def backend_name(config: InferenceConfig) -> str:
 @dataclass(frozen=True)
 class InferencePlan:
     model: str
-    dtype: str
-    max_context_length: int | None
+    model_config: dict[str, Any]
     backend: str
     backend_config: dict[str, Any]
     generation: dict[str, Any]
@@ -76,8 +80,7 @@ def build_inference_plan(config: InferenceConfig) -> InferencePlan:
     }
     return InferencePlan(
         model=config.model.model,
-        dtype=config.model.dtype,
-        max_context_length=config.model.max_context_length,
+        model_config=asdict(config.model),
         backend=backend_name(config),
         backend_config=asdict(config.backend),
         generation=asdict(config.generation),
@@ -94,11 +97,22 @@ def format_inference_plan(plan: InferencePlan) -> str:
         "",
         "MODEL",
         f"  model: {plan.model}",
-        f"  dtype: {plan.dtype}",
-        f"  max context: {plan.max_context_length or 'backend/model default'}",
+        f"  dtype: {plan.model_config['dtype']}",
+        (
+            "  max context: "
+            f"{plan.model_config['max_context_length'] or 'backend/model default'}"
+        ),
+        f"  trust remote code: {plan.model_config['trust_remote_code']}",
         "",
         "BACKEND",
         f"  engine: {plan.backend}",
+    ]
+    lines.extend(
+        f"  {key}: {value}"
+        for key, value in plan.backend_config.items()
+    )
+    lines.extend(
+        [
         f"  batch generation: {caps.batch_generation}",
         f"  async generation: {caps.async_generation}",
         f"  structured output: {caps.structured_output}",
@@ -119,5 +133,6 @@ def format_inference_plan(plan: InferencePlan) -> str:
         ),
         "",
         f"fingerprint: {plan.fingerprint}",
-    ]
+        ]
+    )
     return "\n".join(lines)
