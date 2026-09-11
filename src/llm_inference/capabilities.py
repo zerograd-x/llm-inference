@@ -15,6 +15,25 @@ class BackendCapabilities:
     structured_output: bool = False
 
 
+TRANSFORMERS_CAPABILITIES = BackendCapabilities(
+    batch_generation=True,
+    async_generation=False,
+    sampling=True,
+    multi_sample=False,
+    logprobs=False,
+    structured_output=False,
+)
+
+VLLM_CAPABILITIES = BackendCapabilities(
+    batch_generation=True,
+    async_generation=False,
+    sampling=True,
+    multi_sample=True,
+    logprobs=True,
+    structured_output=True,
+)
+
+
 def validate_request_capabilities(
     request: GenerationRequest,
     capabilities: BackendCapabilities,
