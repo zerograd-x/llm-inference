@@ -13,15 +13,13 @@ class BackendCapabilities:
     multi_sample: bool = False
     logprobs: bool = False
     structured_output: bool = False
+    structured_output_kinds: tuple[str, ...] = ()
 
 
 TRANSFORMERS_CAPABILITIES = BackendCapabilities(
     batch_generation=True,
     async_generation=False,
     sampling=True,
-    multi_sample=False,
-    logprobs=False,
-    structured_output=False,
 )
 
 VLLM_CAPABILITIES = BackendCapabilities(
@@ -31,6 +29,25 @@ VLLM_CAPABILITIES = BackendCapabilities(
     multi_sample=True,
     logprobs=True,
     structured_output=True,
+    structured_output_kinds=(
+        "json_schema",
+        "regex",
+        "choices",
+        "grammar",
+    ),
+)
+
+SGLANG_CAPABILITIES = BackendCapabilities(
+    batch_generation=True,
+    async_generation=True,
+    sampling=True,
+    multi_sample=False,
+    logprobs=False,
+    structured_output=True,
+    structured_output_kinds=(
+        "json_schema",
+        "regex",
+    ),
 )
 
 
@@ -45,5 +62,12 @@ def validate_request_capabilities(
         raise ValueError("Selected backend does not support n > 1")
     if generation.logprobs is not None and not capabilities.logprobs:
         raise ValueError("Selected backend does not support requested logprobs")
-    if request.structured_output is not None and not capabilities.structured_output:
-        raise ValueError("Selected backend does not support structured output")
+    if request.structured_output is not None:
+        if not capabilities.structured_output:
+            raise ValueError("Selected backend does not support structured output")
+        kind = request.structured_output.kind
+        supported = capabilities.structured_output_kinds
+        if supported and kind not in supported:
+            raise ValueError(
+                f"Selected backend does not support structured output kind {kind!r}"
+            )

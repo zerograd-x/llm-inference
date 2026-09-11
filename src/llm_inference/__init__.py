@@ -6,11 +6,17 @@ from .config import (
     BatchConfig,
     InferenceConfig,
     ModelConfig,
+    SGLangConfig,
     TransformersConfig,
     VLLMConfig,
 )
 from .factory import create_backend
 from .inspection import InferencePlan, build_inference_plan, format_inference_plan
+from .registry import (
+    DEFAULT_BACKEND_REGISTRY,
+    BackendRegistration,
+    BackendRegistry,
+)
 from .request import GenerationConfig, GenerationRequest
 from .result import GenerationCandidate, GenerationResult
 from .run import InferenceRunIdentity, create_run_identity
@@ -19,7 +25,10 @@ from .structured import StructuredOutputConfig
 __all__ = [
     "AsyncInferenceBackend",
     "BackendCapabilities",
+    "BackendRegistration",
+    "BackendRegistry",
     "BatchConfig",
+    "DEFAULT_BACKEND_REGISTRY",
     "GenerationCandidate",
     "GenerationConfig",
     "GenerationRequest",
@@ -29,6 +38,7 @@ __all__ = [
     "InferencePlan",
     "InferenceRunIdentity",
     "ModelConfig",
+    "SGLangConfig",
     "StructuredOutputConfig",
     "TransformersConfig",
     "VLLMConfig",
