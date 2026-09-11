@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from collections.abc import Callable
 from typing import Any
 
 from .backend import InferenceBackend
@@ -12,6 +13,7 @@ from .capabilities import (
     SGLANG_CAPABILITIES,
     TRANSFORMERS_CAPABILITIES,
     VLLM_CAPABILITIES,
+    vllm_capabilities,
 )
 from .config import SGLangConfig, TransformersConfig, VLLMConfig
 
@@ -22,12 +24,23 @@ class BackendRegistration:
     config_type: type[Any]
     backend_type: type[InferenceBackend]
     capabilities: BackendCapabilities
+    capability_resolver: Callable[[Any], BackendCapabilities] | None = None
 
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip():
             raise ValueError("backend registration name must be non-empty")
         if not issubclass(self.backend_type, InferenceBackend):
             raise TypeError("backend_type must be an InferenceBackend subclass")
+
+    def capabilities_for(self, config: Any) -> BackendCapabilities:
+        if not isinstance(config, self.config_type):
+            raise TypeError(
+                f"{self.name!r} capabilities require "
+                f"{self.config_type.__name__}"
+            )
+        if self.capability_resolver is not None:
+            return self.capability_resolver(config)
+        return self.capabilities
 
 
 class BackendRegistry:
@@ -71,6 +84,9 @@ class BackendRegistry:
             )
         return registration
 
+    def capabilities_for(self, config: Any) -> BackendCapabilities:
+        return self.resolve(config).capabilities_for(config)
+
     def create(self, inference_config: Any) -> InferenceBackend:
         registration = self.resolve(inference_config.backend)
         return registration.backend_type(inference_config)
@@ -92,6 +108,7 @@ def build_default_backend_registry() -> BackendRegistry:
             config_type=VLLMConfig,
             backend_type=VLLMBackend,
             capabilities=VLLM_CAPABILITIES,
+            capability_resolver=vllm_capabilities,
         )
     )
     registry.register(
