@@ -149,8 +149,6 @@ resolve through that same registry.
 
 The initial backends are:
 
-| Capability | Transformers | vLLM | SGLang |
-|---|---:|---:|---:|
 | Capability | Transformers | vLLM offline | vLLM async | SGLang |
 |---|---:|---:|---:|---:|
 | synchronous batch API | yes | yes | no | yes |
