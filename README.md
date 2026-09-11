@@ -19,9 +19,12 @@ capability preflight
 InferencePlan
        |
        v
+BackendRegistry
+       |
+       v
 InferenceBackend
-   /          \
-Transformers   vLLM
+   /      |      \
+Transformers vLLM SGLang
        |
        v
 GenerationResult
@@ -54,7 +57,13 @@ vLLM backend:
 pip install -e '.[vllm]'
 ```
 
-Unit tests need neither Transformers nor vLLM:
+SGLang backend:
+
+```bash
+pip install -e '.[sglang]'
+```
+
+Unit tests need none of the optional inference engines:
 
 ```bash
 pip install -e '.[test]'
@@ -134,21 +143,25 @@ aligned with generated output.
 ## Backend capabilities
 
 Capabilities are explicit rather than silently falling back to another runtime.
+Backend name, config type, implementation type, and capabilities are registered
+once in `BackendRegistry`; factory creation and `InferencePlan` inspection both
+resolve through that same registry.
 
 The initial backends are:
 
-| Capability | Transformers | vLLM |
-|---|---:|---:|
-| batch generation | yes | yes |
-| sampling | yes | yes |
-| multiple candidates (`n > 1`) | no | yes |
-| logprobs | no | yes |
-| structured output | no | yes |
-| native async interface | no | no, initial wrapper |
+| Capability | Transformers | vLLM | SGLang |
+|---|---:|---:|---:|
+| batch generation | yes | yes | yes |
+| sampling | yes | yes | yes |
+| multiple candidates (`n > 1`) | no | yes | no |
+| logprobs | no | yes | no |
+| JSON-schema / regex structured output | no | yes | yes |
+| choices / grammar structured output | no | yes | no |
+| native async interface | no | no | yes |
 
-The first vLLM backend uses `LLM.generate()`. A native async vLLM backend can
-implement the same async protocol later without changing the request/result
-contract.
+The first vLLM backend uses `LLM.generate()`. The SGLang adapter uses the
+offline `sgl.Engine` API and also exposes its native `async_generate()` through
+the shared async backend protocol.
 
 ## Structured output
 
@@ -210,7 +223,8 @@ This repository owns:
 - generation request/result contracts;
 - backend capability declarations and preflight validation;
 - effective `InferencePlan` inspection;
-- Transformers and vLLM backend adapters;
+- explicit backend registry;
+- Transformers, vLLM, and SGLang backend adapters;
 - local block batching;
 - bounded async request scheduling;
 - basic request/token throughput summaries;
