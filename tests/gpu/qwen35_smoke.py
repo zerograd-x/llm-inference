@@ -104,6 +104,11 @@ def make_config(case: str, model: str) -> InferenceConfig:
                 tensor_parallel_size=1,
                 mem_fraction_static=0.8,
                 context_length=4096,
+                extra_kwargs={
+                    "attention_backend": "triton",
+                    "linear_attn_backend": "triton",
+                    "disable_cuda_graph": True,
+                },
             ),
         )
     raise ValueError(f"unknown case: {case}")
