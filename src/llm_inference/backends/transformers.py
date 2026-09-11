@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Sequence
 
 from ..backend import InferenceBackend
-from ..capabilities import BackendCapabilities
+from ..capabilities import TRANSFORMERS_CAPABILITIES
 from ..config import InferenceConfig, TransformersConfig
 from ..request import GenerationConfig, GenerationRequest
 from ..result import GenerationCandidate, GenerationResult
@@ -12,14 +12,7 @@ from ..result import GenerationCandidate, GenerationResult
 
 class TransformersBackend(InferenceBackend):
     name = "transformers"
-    capabilities = BackendCapabilities(
-        batch_generation=True,
-        async_generation=False,
-        sampling=True,
-        multi_sample=False,
-        logprobs=False,
-        structured_output=False,
-    )
+    capabilities = TRANSFORMERS_CAPABILITIES
 
     def __init__(self, config: InferenceConfig) -> None:
         if not isinstance(config.backend, TransformersConfig):
