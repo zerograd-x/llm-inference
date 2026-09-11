@@ -5,13 +5,9 @@ import hashlib
 import json
 from typing import Any
 
-from .capabilities import (
-    BackendCapabilities,
-    TRANSFORMERS_CAPABILITIES,
-    VLLM_CAPABILITIES,
-    validate_request_capabilities,
-)
-from .config import InferenceConfig, TransformersConfig, VLLMConfig
+from .capabilities import BackendCapabilities, validate_request_capabilities
+from .config import InferenceConfig
+from .registry import DEFAULT_BACKEND_REGISTRY, BackendRegistry
 from .request import GenerationRequest
 
 
@@ -28,22 +24,6 @@ def _canonical_sha256(payload: Any) -> str:
             "to produce a stable plan fingerprint"
         ) from exc
     return hashlib.sha256(encoded).hexdigest()
-
-
-def backend_capabilities(config: InferenceConfig) -> BackendCapabilities:
-    if isinstance(config.backend, TransformersConfig):
-        return TRANSFORMERS_CAPABILITIES
-    if isinstance(config.backend, VLLMConfig):
-        return VLLM_CAPABILITIES
-    raise TypeError(f"Unsupported backend config: {type(config.backend).__name__}")
-
-
-def backend_name(config: InferenceConfig) -> str:
-    if isinstance(config.backend, TransformersConfig):
-        return "transformers"
-    if isinstance(config.backend, VLLMConfig):
-        return "vllm"
-    raise TypeError(f"Unsupported backend config: {type(config.backend).__name__}")
 
 
 @dataclass(frozen=True)
@@ -63,17 +43,22 @@ class InferencePlan:
         return payload
 
 
-def build_inference_plan(config: InferenceConfig) -> InferencePlan:
-    capabilities = backend_capabilities(config)
+def build_inference_plan(
+    config: InferenceConfig,
+    *,
+    registry: BackendRegistry = DEFAULT_BACKEND_REGISTRY,
+) -> InferencePlan:
+    registration = registry.resolve(config.backend)
     validate_request_capabilities(
         GenerationRequest(prompt="<plan>", generation=config.generation),
-        capabilities,
+        registration.capabilities,
     )
+    backend_config = asdict(config.backend)
     payload = {
         "model": asdict(config.model),
         "backend": {
-            "name": backend_name(config),
-            **asdict(config.backend),
+            "name": registration.name,
+            **backend_config,
         },
         "generation": asdict(config.generation),
         "batch": asdict(config.batch),
@@ -81,11 +66,11 @@ def build_inference_plan(config: InferenceConfig) -> InferencePlan:
     return InferencePlan(
         model=config.model.model,
         model_config=asdict(config.model),
-        backend=backend_name(config),
-        backend_config=asdict(config.backend),
+        backend=registration.name,
+        backend_config=backend_config,
         generation=asdict(config.generation),
         batch=asdict(config.batch),
-        capabilities=capabilities,
+        capabilities=registration.capabilities,
         fingerprint=_canonical_sha256(payload),
     )
 
@@ -113,26 +98,30 @@ def format_inference_plan(plan: InferencePlan) -> str:
     )
     lines.extend(
         [
-        f"  batch generation: {caps.batch_generation}",
-        f"  async generation: {caps.async_generation}",
-        f"  structured output: {caps.structured_output}",
-        f"  logprobs: {caps.logprobs}",
-        "",
-        "GENERATION",
-        f"  max new tokens: {plan.generation['max_new_tokens']}",
-        f"  temperature: {plan.generation['temperature']}",
-        f"  top_p: {plan.generation['top_p']}",
-        f"  top_k: {plan.generation['top_k']}",
-        f"  n: {plan.generation['n']}",
-        "",
-        "BATCH",
-        f"  block size: {plan.batch['block_size']}",
-        (
-            "  max concurrent requests: "
-            f"{plan.batch['max_concurrent_requests']}"
-        ),
-        "",
-        f"fingerprint: {plan.fingerprint}",
+            f"  batch generation: {caps.batch_generation}",
+            f"  async generation: {caps.async_generation}",
+            f"  structured output: {caps.structured_output}",
+            (
+                "  structured output kinds: "
+                f"{', '.join(caps.structured_output_kinds) or 'none'}"
+            ),
+            f"  logprobs: {caps.logprobs}",
+            "",
+            "GENERATION",
+            f"  max new tokens: {plan.generation['max_new_tokens']}",
+            f"  temperature: {plan.generation['temperature']}",
+            f"  top_p: {plan.generation['top_p']}",
+            f"  top_k: {plan.generation['top_k']}",
+            f"  n: {plan.generation['n']}",
+            "",
+            "BATCH",
+            f"  block size: {plan.batch['block_size']}",
+            (
+                "  max concurrent requests: "
+                f"{plan.batch['max_concurrent_requests']}"
+            ),
+            "",
+            f"fingerprint: {plan.fingerprint}",
         ]
     )
     return "\n".join(lines)
