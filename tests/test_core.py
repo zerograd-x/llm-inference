@@ -10,13 +10,16 @@ from llm_inference import (
     GenerationRequest,
     GenerationResult,
     InferenceConfig,
+    DEFAULT_BACKEND_REGISTRY,
     ModelConfig,
+    SGLangConfig,
     StructuredOutputConfig,
     TransformersConfig,
     VLLMConfig,
     build_inference_plan,
     create_run_identity,
     format_inference_plan,
+    validate_request_capabilities,
 )
 from llm_inference.backend import InferenceBackend
 from llm_inference.batch import AsyncRequestRunner, LocalBatchRunner
@@ -196,3 +199,76 @@ def test_run_identity_is_safe_and_explicit_when_provided():
     identity = create_run_identity("experiment 01/run")
 
     assert identity.run_id == "experiment_01_run"
+
+
+
+def test_default_backend_registry_is_single_source_of_backend_metadata():
+    assert DEFAULT_BACKEND_REGISTRY.names == (
+        "sglang",
+        "transformers",
+        "vllm",
+    )
+
+    registration = DEFAULT_BACKEND_REGISTRY.resolve(SGLangConfig())
+    assert registration.name == "sglang"
+    assert registration.capabilities.async_generation is True
+    assert registration.capabilities.structured_output_kinds == (
+        "json_schema",
+        "regex",
+    )
+
+
+def test_sglang_plan_uses_registry_and_exposes_native_async_capability():
+    config = InferenceConfig(
+        model=ModelConfig(
+            "example/model",
+            dtype="bfloat16",
+            max_context_length=16384,
+        ),
+        backend=SGLangConfig(
+            tensor_parallel_size=2,
+            mem_fraction_static=0.85,
+        ),
+        generation=GenerationConfig(
+            max_new_tokens=64,
+            temperature=0.2,
+        ),
+    )
+
+    plan = build_inference_plan(config)
+
+    assert plan.backend == "sglang"
+    assert plan.capabilities.async_generation is True
+    assert plan.backend_config["tensor_parallel_size"] == 2
+    assert plan.backend_config["mem_fraction_static"] == 0.85
+    assert "engine: sglang" in format_inference_plan(plan)
+
+
+def test_sglang_capabilities_fail_fast_for_unsupported_multi_sample():
+    config = InferenceConfig(
+        model=ModelConfig("example/model"),
+        backend=SGLangConfig(),
+        generation=GenerationConfig(n=2),
+    )
+
+    with pytest.raises(ValueError, match="n > 1"):
+        build_inference_plan(config)
+
+
+def test_sglang_capabilities_reject_unsupported_structured_output_kind():
+    capabilities = DEFAULT_BACKEND_REGISTRY.get("sglang").capabilities
+    request = GenerationRequest(
+        prompt="pick one",
+        structured_output=StructuredOutputConfig(
+            choices=("yes", "no"),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="structured output kind"):
+        validate_request_capabilities(request, capabilities)
+
+    supported = GenerationRequest(
+        prompt="return digits",
+        structured_output=StructuredOutputConfig(regex=r"\\d+"),
+    )
+    validate_request_capabilities(supported, capabilities)
