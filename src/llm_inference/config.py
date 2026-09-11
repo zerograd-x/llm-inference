@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 from .request import GenerationConfig
 
@@ -33,6 +33,7 @@ class VLLMConfig:
     max_model_len: int | None = None
     enable_prefix_caching: bool = False
     extra_kwargs: Mapping[str, Any] = field(default_factory=dict)
+    execution_mode: Literal["offline", "async"] = "offline"
 
     def __post_init__(self) -> None:
         if self.tensor_parallel_size <= 0:
@@ -41,6 +42,8 @@ class VLLMConfig:
             raise ValueError("gpu_memory_utilization must be in (0, 1]")
         if self.max_model_len is not None and self.max_model_len <= 0:
             raise ValueError("max_model_len must be > 0 when set")
+        if self.execution_mode not in {"offline", "async"}:
+            raise ValueError("execution_mode must be 'offline' or 'async'")
         extra = dict(self.extra_kwargs)
         reserved = {
             "model",

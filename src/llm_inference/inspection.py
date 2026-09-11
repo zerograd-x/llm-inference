@@ -49,9 +49,10 @@ def build_inference_plan(
     registry: BackendRegistry = DEFAULT_BACKEND_REGISTRY,
 ) -> InferencePlan:
     registration = registry.resolve(config.backend)
+    capabilities = registration.capabilities_for(config.backend)
     validate_request_capabilities(
         GenerationRequest(prompt="<plan>", generation=config.generation),
-        registration.capabilities,
+        capabilities,
     )
     backend_config = asdict(config.backend)
     payload = {
@@ -70,7 +71,7 @@ def build_inference_plan(
         backend_config=backend_config,
         generation=asdict(config.generation),
         batch=asdict(config.batch),
-        capabilities=registration.capabilities,
+        capabilities=capabilities,
         fingerprint=_canonical_sha256(payload),
     )
 

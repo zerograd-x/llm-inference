@@ -149,19 +149,40 @@ resolve through that same registry.
 
 The initial backends are:
 
-| Capability | Transformers | vLLM | SGLang |
-|---|---:|---:|---:|
-| batch generation | yes | yes | yes |
-| sampling | yes | yes | yes |
-| multiple candidates (`n > 1`) | no | yes | no |
-| logprobs | no | yes | no |
-| JSON-schema / regex structured output | no | yes | yes |
-| choices / grammar structured output | no | yes | no |
-| native async interface | no | no | yes |
+| Capability | Transformers | vLLM offline | vLLM async | SGLang |
+|---|---:|---:|---:|---:|
+| synchronous batch API | yes | yes | no | yes |
+| sampling | yes | yes | yes | yes |
+| multiple candidates (`n > 1`) | no | yes | yes | no |
+| logprobs | no | yes | yes | no |
+| JSON-schema / regex structured output | no | yes | yes | yes |
+| choices / grammar structured output | no | yes | yes | no |
+| native async interface | no | no | yes | yes |
 
-The first vLLM backend uses `LLM.generate()`. The SGLang adapter uses the
-offline `sgl.Engine` API and also exposes its native `async_generate()` through
-the shared async backend protocol.
+vLLM is one registered backend with two execution modes. Offline mode uses
+`LLM.generate()` for synchronous batches. Async mode builds `AsyncLLM` from
+`AsyncEngineArgs` and exposes per-request native async generation through the
+shared async backend protocol. The same async path can be used for large offline
+jobs with `AsyncRequestRunner`; it does not require running an HTTP server.
+
+```python
+offline = VLLMConfig(
+    execution_mode="offline",
+    tensor_parallel_size=4,
+)
+
+async_mode = VLLMConfig(
+    execution_mode="async",
+    tensor_parallel_size=4,
+)
+```
+
+`InferencePlan` reports effective capabilities after resolving the execution
+mode, so `async_generation` is false for the offline configuration and true for
+the async configuration.
+
+The SGLang adapter uses the offline `sgl.Engine` API and also exposes its native
+`async_generate()` through the shared async backend protocol.
 
 ## Structured output
 
