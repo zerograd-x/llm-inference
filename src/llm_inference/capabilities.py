@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from .request import GenerationRequest
 
@@ -22,7 +23,7 @@ TRANSFORMERS_CAPABILITIES = BackendCapabilities(
     sampling=True,
 )
 
-VLLM_CAPABILITIES = BackendCapabilities(
+VLLM_OFFLINE_CAPABILITIES = BackendCapabilities(
     batch_generation=True,
     async_generation=False,
     sampling=True,
@@ -37,6 +38,25 @@ VLLM_CAPABILITIES = BackendCapabilities(
     ),
 )
 
+VLLM_ASYNC_CAPABILITIES = BackendCapabilities(
+    batch_generation=False,
+    async_generation=True,
+    sampling=True,
+    multi_sample=True,
+    logprobs=True,
+    structured_output=True,
+    structured_output_kinds=(
+        "json_schema",
+        "regex",
+        "choices",
+        "grammar",
+    ),
+)
+
+# Backward-compatible name for callers that treated vLLM as the original
+# synchronous offline backend.
+VLLM_CAPABILITIES = VLLM_OFFLINE_CAPABILITIES
+
 SGLANG_CAPABILITIES = BackendCapabilities(
     batch_generation=True,
     async_generation=True,
@@ -49,6 +69,15 @@ SGLANG_CAPABILITIES = BackendCapabilities(
         "regex",
     ),
 )
+
+
+def vllm_capabilities(config: Any) -> BackendCapabilities:
+    mode = getattr(config, "execution_mode", None)
+    if mode == "offline":
+        return VLLM_OFFLINE_CAPABILITIES
+    if mode == "async":
+        return VLLM_ASYNC_CAPABILITIES
+    raise ValueError(f"Unsupported vLLM execution_mode: {mode!r}")
 
 
 def validate_request_capabilities(
