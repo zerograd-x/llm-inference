@@ -17,6 +17,7 @@ from .run import InferenceRunIdentity, create_run_identity
 from .structured import StructuredOutputConfig
 
 __all__ = [
+    "AsyncInferenceBackend",
     "BackendCapabilities",
     "BatchConfig",
     "GenerationCandidate",
