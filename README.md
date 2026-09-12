@@ -7,6 +7,10 @@ runtime planning, and local batch scheduling separate from model training,
 application-specific prompt construction, distributed cluster orchestration, and
 artifact movement.
 
+For complete runnable examples, backend selection guidance, sync/async usage,
+GPU configuration, and smoke-test commands, see the
+[Inference usage guide](docs/inference-usage.md).
+
 ## Architecture
 
 ```text
