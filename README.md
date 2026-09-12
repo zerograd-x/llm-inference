@@ -9,7 +9,8 @@ artifact movement.
 
 For complete runnable examples, backend selection guidance, sync/async usage,
 GPU configuration, and smoke-test commands, see the
-[Inference usage guide](docs/inference-usage.md).
+[Inference usage guide](docs/inference-usage.md). To run a complete JSONL job from a YAML or JSON file, see
+[Config-driven inference](docs/config-driven.md).
 
 ## Architecture
 

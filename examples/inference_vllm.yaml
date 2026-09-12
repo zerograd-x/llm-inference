@@ -1,0 +1,26 @@
+model:
+  name_or_path: Qwen/Qwen3.5-4B
+  dtype: bfloat16
+  max_context_length: 4096
+
+backend:
+  name: vllm
+  execution_mode: async
+  tensor_parallel_size: 1
+  gpu_memory_utilization: 0.8
+
+generation:
+  max_new_tokens: 128
+  temperature: 0.0
+
+batch:
+  max_concurrent_requests: 32
+
+input:
+  path: requests.jsonl
+  prompt_field: prompt
+  id_field: request_id
+
+output:
+  path: results.jsonl
+  overwrite: false
