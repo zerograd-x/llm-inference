@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
         count = run_job(job)
         print(f"wrote {count} results to {job.output.path}")
         return 0
-    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+    except (ImportError, OSError, RuntimeError, TypeError, ValueError) as exc:
         parser.exit(2, f"llm-infer: error: {exc}\n")
 
 
